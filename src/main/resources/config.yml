@@ -1,0 +1,13 @@
+languages:
+  description: '§aНапишите количество уровней, которое хотите обменять или используйте: /sell-lvl max'
+  exchangeList: '§5Список обмена:'
+  exchangeEntry: ' Уровень %level% = +⛂%price%'
+  foundMaximumExchange: 'Мы нашли допустимый обмен: Уровень %level% = +⛂%price%'
+  noSuchExchange: '§4Нет такого обмена, пробуйте когда накачаетесь!'
+  lowLevelException: '§4У вас маленький уровень, что бы обменять'
+  exchangeConfirmation: '§eОтняли уровень, но за то при деньгах! Получи §a+§e⛂%price%'
+exchanges:
+  '50': 15
+  '65': 25
+  '80': 40
+  '100': 70

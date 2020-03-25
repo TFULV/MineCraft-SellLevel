@@ -1,0 +1,16 @@
+name: SellLevel
+main: lv.tfu.minecraft.selllevel.SellLevel
+version: '%PLUGIN_VERSION%'
+api-version: '1.13'
+author: Vaflan
+website: http://tfu.lv
+softdepend: [Vault]
+commands:
+  selllevel:
+    description: Exchange your level to balance
+    aliases:
+      - sell-lvl
+      - sell-lvl max
+      - sell-lvl help
+      - selllevel max
+      - selllevel help
