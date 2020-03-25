@@ -6,7 +6,8 @@
 
     <groupId>lv.tfu.minecraft</groupId>
     <artifactId>SellLevel</artifactId>
-    <version>1.0</version>
+    <version>1.0.1</version>
+
     <packaging>jar</packaging>
     <name>SellLevel</name>
 

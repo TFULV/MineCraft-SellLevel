@@ -3,7 +3,7 @@ main: lv.tfu.minecraft.selllevel.SellLevel
 version: '%PLUGIN_VERSION%'
 api-version: '1.13'
 author: Vaflan
-website: http://tfu.lv
+website: https://github.com/TFULV/MineCraft-SellLevel
 softdepend: [Vault]
 commands:
   selllevel:
