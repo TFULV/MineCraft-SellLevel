@@ -6,6 +6,14 @@ languages:
   noSuchExchange: '§4Нет такого обмена, пробуйте когда накачаетесь!'
   lowLevelException: '§4У вас маленький уровень, что бы обменять'
   exchangeConfirmation: '§eОтняли уровень, но за то при деньгах! Получи §a+§e⛂%price%'
+  gui:
+    exchangeTitle: '§5Обменяй свой %level% уровень'
+    hasPossibility: '§aОбменяй'
+    noPossibility: '§cУровень мал для этого'
+    requiredLevel: '§fНеобходим уровень: §b%level%'
+    exchangeReward: '§fНаграда за обмен: §e%price%'
+hasPossibilityBlock: 'SEA_LANTERN'
+noPossibilityBlock: 'GLASS'
 exchanges:
   '50': 15
   '65': 25

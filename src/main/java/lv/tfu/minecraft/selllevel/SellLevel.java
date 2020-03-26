@@ -4,19 +4,35 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedList;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class SellLevel extends JavaPlugin {
+    private static ArrayList<ExchangeStack> exchangeStacks = new ArrayList<>();
+    private static LinkedList<Player> openedInventory = new LinkedList<>();
+    private static int CHEST_SIZE = 27;
+    private static SellLevel instance;
     private Economy economy;
+
+    public static SellLevel getInstance() {
+        return instance;
+    }
 
     @Override
     public void onEnable() {
+        instance = this;
+
         getLogger().info("Initialization plugin");
 
         getConfig().options().copyDefaults(true);
@@ -33,6 +49,37 @@ public class SellLevel extends JavaPlugin {
             getLogger().warning("Economy plugin not installed!");
         }
 
+        for (String exchangeLevel : getConfig().getConfigurationSection("exchanges").getKeys(false)) {
+            exchangeStacks.add(new ExchangeStack(
+                    Integer.parseInt(exchangeLevel),
+                    getConfig().getDouble("exchanges." + exchangeLevel)
+            ));
+        }
+
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onEvent(InventoryClickEvent event) {
+                Player player = (Player) event.getWhoClicked();
+                if (openedInventory.contains(player)) {
+                    ItemStack currentItem = event.getCurrentItem();
+                    if (currentItem != null && currentItem.getItemMeta().getLocalizedName().equalsIgnoreCase("sell-level")) {
+                        ExchangeStack exchangeStack = exchangeStacks.get(event.getSlot());
+                        if (makeProcess(player, exchangeStack.getLevel(), exchangeStack.getPrice())) {
+                            player.closeInventory();
+                            openExchangeGUI(player);
+                        }
+                    }
+                    event.setCancelled(true);
+                }
+            }
+
+            @EventHandler
+            public void onEvent(InventoryCloseEvent event) {
+                Player player = (Player) event.getPlayer();
+                openedInventory.remove(player);
+            }
+        }, this);
+
         getLogger().info("Enabled!");
     }
 
@@ -48,29 +95,31 @@ public class SellLevel extends JavaPlugin {
 
             if (args.length == 1 && (isNumeric(args[0]) || args[0].equalsIgnoreCase("max"))) {
                 boolean isMax = args[0].equalsIgnoreCase("max");
-                HashMap<String, Object> exchange = isMax
+                ExchangeStack exchange = isMax
                         ? getExchangeByLevel(player.getLevel(), true)
                         : getExchangeByLevel(Integer.parseInt(args[0]), false);
                 if (exchange != null) {
                     if (isMax) {
                         player.sendMessage(getLanguage(
                                 "foundMaximumExchange",
-                                new String[]{"level", "price"},
-                                new String[]{String.valueOf(exchange.get("level")), String.valueOf(exchange.get("price"))}
+                                exchange.getParamKeys(),
+                                exchange.getParamValues()
                         ));
                     }
-                    makeProcess(player, (Integer) exchange.get("level"), (Double) exchange.get("price"));
+                    makeProcess(player, exchange.getLevel(), exchange.getPrice());
                 } else {
                     player.sendMessage(getLanguage("noSuchExchange"));
                 }
+            } else if (args.length == 0) {
+                openExchangeGUI(player);
             } else {
                 player.sendMessage(getLanguage("description"));
                 player.sendMessage(getLanguage("exchangeList"));
-                for (String exchangeLevel : getConfig().getConfigurationSection("exchanges").getKeys(false)) {
+                for (ExchangeStack exchange : exchangeStacks) {
                     player.sendMessage(getLanguage(
                             "exchangeEntry",
-                            new String[]{"level", "price"},
-                            new String[]{exchangeLevel, getConfig().getString("exchanges." + exchangeLevel)}
+                            exchange.getParamKeys(),
+                            exchange.getParamValues()
                     ));
                 }
             }
@@ -78,34 +127,23 @@ public class SellLevel extends JavaPlugin {
         return true;
     }
 
-    private HashMap<String, Object> getExchangeByLevel(int level, boolean isMaximal) {
-        HashMap<String, Object> suitableExchange = null;
-
-        ConfigurationSection exchanges = getConfig().getConfigurationSection("exchanges");
-        for (String key : exchanges.getKeys(false)) {
-            int exchangeLevel = Integer.parseInt(key);
-            double exchangePrice = getConfig().getDouble("exchanges." + key);
+    private ExchangeStack getExchangeByLevel(int level, boolean isMaximal) {
+        ExchangeStack suitableExchange = null;
+        for (ExchangeStack exchange : exchangeStacks) {
             if (isMaximal) {
-                if (level > exchangeLevel
-                        && (suitableExchange == null || (Integer) suitableExchange.get("level") < exchangeLevel)
+                if (level > exchange.getLevel()
+                        && (suitableExchange == null || suitableExchange.getLevel() < exchange.getLevel())
                 ) {
-                    suitableExchange = new HashMap<String, Object>() {{
-                        put("level", exchangeLevel);
-                        put("price", exchangePrice);
-                    }};
+                    suitableExchange = exchange;
                 }
-            } else if (level == exchangeLevel) {
-                suitableExchange = new HashMap<String, Object>() {{
-                    put("level", exchangeLevel);
-                    put("price", exchangePrice);
-                }};
+            } else if (level == exchange.getLevel()) {
+                suitableExchange = exchange;
             }
         }
-
         return suitableExchange;
     }
 
-    private String getLanguage(String key, String[] pattern, String[] replacement) {
+    public String getLanguage(String key, String[] pattern, String[] replacement) {
         String value = getConfig().getString("languages." + key);
         for (int index = 0; index < pattern.length; index++) {
             value = value.replace("%" + pattern[index] + "%", replacement[index]);
@@ -113,11 +151,11 @@ public class SellLevel extends JavaPlugin {
         return value;
     }
 
-    private String getLanguage(String key) {
+    public String getLanguage(String key) {
         return getLanguage(key, new String[]{}, new String[]{});
     }
 
-    private void makeProcess(Player player, int neededLevel, double levelPrice) {
+    private boolean makeProcess(Player player, int neededLevel, double levelPrice) {
         int currentLevel = player.getLevel();
         if (currentLevel >= neededLevel) {
             if (economy != null) {
@@ -128,12 +166,14 @@ public class SellLevel extends JavaPlugin {
                         new String[]{"level", "price", "currentLevel"},
                         new String[]{String.valueOf(neededLevel), String.valueOf(levelPrice), String.valueOf(player.getLevel())}
                 ));
+                return true;
             } else {
                 player.sendMessage("The server has no Vault");
             }
         } else {
             player.sendMessage(getLanguage("lowLevelException"));
         }
+        return false;
     }
 
     public static boolean isNumeric(String strNum) {
@@ -146,5 +186,22 @@ public class SellLevel extends JavaPlugin {
             return false;
         }
         return true;
+    }
+
+    private void openExchangeGUI(Player player) {
+        int itemIndex = 0;
+        Inventory inventory = Bukkit.createInventory(null, CHEST_SIZE, getLanguage(
+                "gui.exchangeTitle",
+                new String[]{"level"},
+                new String[]{String.valueOf(player.getLevel())}
+        ));
+        for (ExchangeStack exchange : exchangeStacks) {
+            if (itemIndex == CHEST_SIZE) {
+                break;
+            }
+            inventory.setItem(itemIndex++, exchange.createStack(player.getLevel()));
+        }
+        player.openInventory(inventory);
+        openedInventory.add(player);
     }
 }
